@@ -1,0 +1,147 @@
+import random
+import time
+from datetime import datetime
+import matplotlib.pyplot as plt
+import numpy as np
+
+# ---------- GERAÇÃO DE DATAS COMO TIMESTAMPS ----------
+def gerar_datas(qtd):
+    base = datetime(2020, 1, 1).timestamp()
+    return [base + random.randint(0, 5 * 365 * 24 * 3600) for _ in range(qtd)]
+
+# ---------- FUNÇÃO DE COMPARAÇÃO DE DATAS ----------
+def comparar_datas(data1, data2):
+    return (data1 > data2) - (data1 < data2)
+
+# ---------- ALGORITMOS DE ORDENAÇÃO ----------
+def bubble_sort(arr):
+    arr = arr[:]
+    n = len(arr)
+    for i in range(n):
+        trocou = False
+        for j in range(0, n - i - 1):
+            if comparar_datas(arr[j], arr[j + 1]) > 0:
+                arr[j], arr[j + 1] = arr[j + 1], arr[j]
+                trocou = True
+        if not trocou:
+            break
+    return arr
+
+def merge_sort(arr):
+    if len(arr) <= 1:
+        return arr
+    meio = len(arr) // 2
+    esquerda = merge_sort(arr[:meio])
+    direita = merge_sort(arr[meio:])
+    return merge(esquerda, direita)
+
+def merge(esq, dir):
+    resultado, i, j = [], 0, 0
+    while i < len(esq) and j < len(dir):
+        if comparar_datas(esq[i], dir[j]) <= 0:
+            resultado.append(esq[i])
+            i += 1
+        else:
+            resultado.append(dir[j])
+            j += 1
+    resultado.extend(esq[i:])
+    resultado.extend(dir[j:])
+    return resultado
+
+def insertion_sort(arr):
+    arr = arr[:]
+    for i in range(1, len(arr)):
+        chave = arr[i]
+        j = i - 1
+        while j >= 0 and comparar_datas(arr[j], chave) > 0:
+            arr[j + 1] = arr[j]
+            j -= 1
+        arr[j + 1] = chave
+    return arr
+
+# ---------- MEDIÇÃO ----------
+def medir_tempo_medio(func, dados, repeticoes=3):
+    tempos = []
+    for _ in range(repeticoes):
+        inicio = time.perf_counter()
+        func(dados)
+        fim = time.perf_counter()
+        tempos.append(fim - inicio)
+    return np.mean(tempos)
+
+# ---------- FUNÇÕES DE AJUSTE (FIT) ----------
+def fit_linear(x, y):
+    coef = np.polyfit(x, y, 1)
+    return np.polyval(coef, x)
+
+def fit_quadratico(x, y):
+    coef = np.polyfit(x, y, 2)
+    return np.polyval(coef, x)
+
+def fit_nlogn(x, y):
+    x_nlogn = np.array(x) * np.log2(x)
+    coef = np.polyfit(x_nlogn, y, 1)
+    return np.polyval(coef, x_nlogn)
+
+# ---------- EXECUÇÃO ----------
+tamanhos = [10, 30, 60, 90, 100, 120, 140, 180, 200, 250, 300, 400, 500, 600, 700, 750, 800, 900, 950]
+
+bubble_melhor, bubble_pior = [], []
+merge_melhor, merge_pior = [], []
+insertion_melhor, insertion_pior = [], []
+
+for n in tamanhos:
+    base = gerar_datas(n)
+    melhor = sorted(base)
+    pior = sorted(base, reverse=True)
+
+    bubble_melhor.append(medir_tempo_medio(bubble_sort, melhor))
+    bubble_pior.append(medir_tempo_medio(bubble_sort, pior))
+
+    merge_melhor.append(medir_tempo_medio(merge_sort, melhor))
+    merge_pior.append(medir_tempo_medio(merge_sort, pior))
+
+    insertion_melhor.append(medir_tempo_medio(insertion_sort, melhor))
+    insertion_pior.append(medir_tempo_medio(insertion_sort, pior))
+
+# ---------- PLOTAGEM ----------
+fig, axs = plt.subplots(2, 2, figsize=(13, 8))
+fig.suptitle("Benchmark de Algoritmos de Ordenação — Datas e Eventos", fontsize=14)
+
+# Bubble Sort
+axs[0, 0].semilogy(tamanhos, bubble_melhor, 'o', label="Melhor (dados)", color="blue")
+axs[0, 0].semilogy(tamanhos, bubble_pior, 'o', label="Pior (dados)", color="red")
+axs[0, 0].semilogy(tamanhos, fit_linear(tamanhos, bubble_melhor), '--', label="Fit melhor (O(n))", color="blue")
+axs[0, 0].semilogy(tamanhos, fit_quadratico(tamanhos, bubble_pior), '--', label="Fit pior (O(n²))", color="red")
+axs[0, 0].set_title("Bubble Sort")
+axs[0, 0].legend()
+axs[0, 0].grid(True, which="both")
+
+# Merge Sort
+axs[1, 0].semilogy(tamanhos, merge_melhor, 'o', label="Melhor (dados)", color="blue")
+axs[1, 0].semilogy(tamanhos, merge_pior, 'o', label="Pior (dados)", color="red")
+axs[1, 0].semilogy(tamanhos, fit_nlogn(tamanhos, merge_melhor), '--', label="Fit melhor (O(n log n))", color="blue")
+axs[1, 0].semilogy(tamanhos, fit_nlogn(tamanhos, merge_pior), '--', label="Fit pior (O(n log n))", color="red")
+axs[1, 0].set_title("Merge Sort")
+axs[1, 0].legend()
+axs[1, 0].grid(True, which="both")
+
+# Insertion Sort
+axs[0, 1].semilogy(tamanhos, insertion_melhor, 'o', label="Melhor (dados)", color="blue")
+axs[0, 1].semilogy(tamanhos, insertion_pior, 'o', label="Pior (dados)", color="red")
+axs[0, 1].semilogy(tamanhos, fit_linear(tamanhos, insertion_melhor), '--', label="Fit melhor (O(n))", color="blue")
+axs[0, 1].semilogy(tamanhos, fit_quadratico(tamanhos, insertion_pior), '--', label="Fit pior (O(n²))", color="red")
+axs[0, 1].set_title("Insertion Sort")
+axs[0, 1].legend()
+axs[0, 1].grid(True, which="both")
+
+# Comparativo Melhor Caso
+axs[1, 1].semilogy(tamanhos, bubble_melhor, 'o-', label="Bubble Sort")
+axs[1, 1].semilogy(tamanhos, merge_melhor, 'o-', label="Merge Sort")
+axs[1, 1].semilogy(tamanhos, insertion_melhor, 'o-', label="Insertion Sort")
+axs[1, 1].set_title("Comparativo — Melhor Caso")
+axs[1, 1].legend()
+axs[1, 1].grid(True, which="both")
+
+plt.tight_layout()
+plt.show()
